@@ -64,7 +64,6 @@ def getSummonerMatchData(encryptedAccountId, numOfMatches, datetime=datetime.now
         })
       if len(rankedMatches) == numOfMatches:
         break
-    print(rankedMatches)
     return rankedMatches
   except:
     print('Something went wrong in getSummonerMatchData:')
@@ -173,19 +172,28 @@ def getTrainingData():
     dataWriter = csv.writer(testData, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     challengerPlayersUsernames = getChallengerPlayers()
     for username in challengerPlayersUsernames:
-      encryptedSummonerId, encryptedAccountId = getSummonerId(username)
-      print(encryptedAccountId, username)
-      rankedMatches = getSummonerMatchIds(encryptedAccountId, 1)
-      for matchId, timestamp in rankedMatches:
-        data = []
-        teamEncryptedAccountIds, win = getPlayersInMatch(matchId, encryptedAccountId)
-        for teamMemberEncryptedAccountId, teamMemberEncryptedSummonerId in teamEncryptedAccountIds:
-          summonerMatchData = getSummonerMatchData(teamMemberEncryptedAccountId, 3, datetime.fromtimestamp(timestamp/1000.0))
-          organizedData = organizeMatchData(summonerMatchData, teamMemberEncryptedSummonerId)
-          data.append(organizedData)
-        f.write(str(data))
-        flatData = list(chain.from_iterable(data))
-        dataWriter.writerow(flatData)
+      try:
+        encryptedSummonerId, encryptedAccountId = getSummonerId(username)
+        print(encryptedAccountId, username)
+        rankedMatches = getSummonerMatchIds(encryptedAccountId, 1)
+        for matchId, timestamp in rankedMatches:
+          try:
+            data = []
+            teamEncryptedAccountIds, win = getPlayersInMatch(matchId, encryptedAccountId)
+            for teamMemberEncryptedAccountId, teamMemberEncryptedSummonerId in teamEncryptedAccountIds:
+              if (teamMemberEncryptedAccountId == None or teamMemberEncryptedSummonerId == None):
+                raise Exception("Team member is None Type")
+                break
+              summonerMatchData = getSummonerMatchData(teamMemberEncryptedAccountId, 3, datetime.fromtimestamp(timestamp/1000.0))
+              organizedData = organizeMatchData(summonerMatchData, teamMemberEncryptedSummonerId)
+              data.append(organizedData)
+            f.write(str(data))
+            flatData = list(chain.from_iterable(data))
+            dataWriter.writerow(flatData)
+          except:
+            print("Error while going through players")
+      except:
+        print("Error with getting challenger summoner.")
   f.close()
   
 
