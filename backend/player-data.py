@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import csv
 from itertools import chain
 
-API_KEY = 'RGAPI-6fefe88d-7d2a-4c70-b473-f00ac51ee4a3'
+API_KEY = 'RGAPI-66a35f77-83ec-4371-9b1a-5895d60f01b8'
 PLAYER_USERNAME = 'FredericaxSbK'
 TEAMMATES = []
 API_KEY_PARAM = {'api_key': API_KEY}
@@ -43,7 +43,6 @@ def getSummonerWinRate(encryptedSummonerId):
 
 def getSummonerMatchData(encryptedAccountId, numOfMatches, datetime=datetime.now()):
   try:
-    print(encryptedAccountId)
     # Get summoner's matches data
     getAllMatches = 'https://na1.api.riotgames.com/lol/match/v4/matchlists/by-account/{0:s}'.format(encryptedAccountId)
     oneWeekAgo = int(round((datetime - timedelta(days=7)).timestamp() * 1000))
@@ -65,9 +64,11 @@ def getSummonerMatchData(encryptedAccountId, numOfMatches, datetime=datetime.now
         })
       if len(rankedMatches) == numOfMatches:
         break
+    print(rankedMatches)
     return rankedMatches
   except:
     print('Something went wrong in getSummonerMatchData:')
+    print('Input: {0}'.format(encryptedAccountId))
     print(allMatchesResponse)
 
 def organizeMatchData(rankedMatches, encryptedSummonerId):
@@ -131,7 +132,6 @@ def getSummonerMatchIds(encryptedAccountId, numOfMatches):
     print(allMatchesResponse)
 
 def getPlayersInMatch(matchId, encryptedAccountId):
-  print(matchId)
   getMatchDetails = 'https://na1.api.riotgames.com/lol/match/v4/matches/{0:d}'.format(matchId)
   matchDetailsResponse = requests.get(url = getMatchDetails, params=API_KEY_PARAM).json()
   time.sleep(1.3)
@@ -141,11 +141,11 @@ def getPlayersInMatch(matchId, encryptedAccountId):
   win = False
   for i in range(10):
     player = matchDetailsResponse['participants'][i]
-    currentEncryptedAccountId = matchDetailsResponse['participantIdentities'][player['participantId'] - 1]['player']['accountId']
+    currentEncryptedAccountId, currentEncryptedSummonerId = matchDetailsResponse['participantIdentities'][player['participantId'] - 1]['player']['accountId'], matchDetailsResponse['participantIdentities'][player['participantId'] - 1]['player']['summonerId']
     if player['teamId'] == 100:
-      team1.append(currentEncryptedAccountId)
+      team1.append((currentEncryptedAccountId, currentEncryptedSummonerId))
     elif player['teamId'] == 200:
-      team2.append(currentEncryptedAccountId)
+      team2.append((currentEncryptedAccountId, currentEncryptedSummonerId))
     if currentEncryptedAccountId == encryptedAccountId:
       win = player['stats']['win']
       team = player['teamId']
@@ -168,21 +168,25 @@ def getChallengerPlayers():
     print(challengerPlayersResponse)
 
 def getTrainingData():
+  f= open("lol.txt","w+")
   with open('test-data.csv', mode='w') as testData:
     dataWriter = csv.writer(testData, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     challengerPlayersUsernames = getChallengerPlayers()
     for username in challengerPlayersUsernames:
       encryptedSummonerId, encryptedAccountId = getSummonerId(username)
+      print(encryptedAccountId, username)
       rankedMatches = getSummonerMatchIds(encryptedAccountId, 1)
       for matchId, timestamp in rankedMatches:
         data = []
         teamEncryptedAccountIds, win = getPlayersInMatch(matchId, encryptedAccountId)
-        for teamEncryptedAccountId in teamEncryptedAccountIds:
-          print(teamEncryptedAccountId)
-          summonerMatchData = getSummonerMatchData(teamEncryptedAccountId, 3, datetime.fromtimestamp(timestamp/1000.0))
-          data.append(summonerMatchData)
+        for teamMemberEncryptedAccountId, teamMemberEncryptedSummonerId in teamEncryptedAccountIds:
+          summonerMatchData = getSummonerMatchData(teamMemberEncryptedAccountId, 3, datetime.fromtimestamp(timestamp/1000.0))
+          organizedData = organizeMatchData(summonerMatchData, teamMemberEncryptedSummonerId)
+          data.append(organizedData)
+        f.write(str(data))
         flatData = list(chain.from_iterable(data))
         dataWriter.writerow(flatData)
+  f.close()
   
 
         
