@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import csv
 from itertools import chain
 
-API_KEY = 'RGAPI-66a35f77-83ec-4371-9b1a-5895d60f01b8'
+API_KEY = 'RGAPI-8ca6183f-9a94-4bd8-8be5-ce93d361b1dd'
 PLAYER_USERNAME = 'FredericaxSbK'
 TEAMMATES = []
 API_KEY_PARAM = {'api_key': API_KEY}
@@ -20,9 +20,12 @@ def getSummonerId(username):
     encryptedSummonerId = summoner['id']
     encryptedAccountId = summoner['accountId']
     return encryptedSummonerId, encryptedAccountId
-  except:
+  except (KeyboardInterrupt, SystemExit):
+    raise
+  except Exception as e:
     print('Something went wrong in getSummonerId():')
     print(summoner)
+    print(e)
 
 def getSummonerWinRate(encryptedSummonerId):
   try:
@@ -37,9 +40,12 @@ def getSummonerWinRate(encryptedSummonerId):
     summonerLosses = summonerDetails['losses']
     summonerWinRate = summonerWins / (summonerWins + summonerLosses)
     return summonerWinRate
-  except:
+  except (KeyboardInterrupt, SystemExit):
+    raise
+  except Exception as e:
     print('Something went wrong in getSummonerWinRate():')
     print(summonerQueueTypeDetails)
+    print(e)
 
 def getSummonerMatchData(encryptedAccountId, numOfMatches, datetime=datetime.now()):
   try:
@@ -65,24 +71,33 @@ def getSummonerMatchData(encryptedAccountId, numOfMatches, datetime=datetime.now
       if len(rankedMatches) == numOfMatches:
         break
     return rankedMatches
-  except:
+  except (KeyboardInterrupt, SystemExit):
+    raise
+  except Exception as e:
     print('Something went wrong in getSummonerMatchData:')
     print('Input: {0}'.format(encryptedAccountId))
     print(allMatchesResponse)
+    print(e)
 
 def organizeMatchData(rankedMatches, encryptedSummonerId):
   # Organize match data
   matchPlayerDetails = []
   matchDetails = []
   # firstBloodAssist, firstBloodKill, firstInhibitorAssist, firstInhibitorKill, firstTowerAssist, firstTowerKill, win into bool
-  statsDetails = ['assists', 'champLevel', 'damageDealtToObjectives', 'damageDealtToTurrets', 'damageSelfMitigated', 'deaths', 'doubleKills', 'firstBloodAssist', 
-                  'firstBloodKill', 'firstInhibitorAssist', 'firstInhibitorKill', 'firstTowerAssist', 'firstTowerKill', 'goldEarned', 'goldSpent', 'inhibitorKills', 
-                  'killingSprees', 'kills', 'largestKillingSpree', 'largestMultiKill', 'longestTimeSpentLiving', 'magicDamageDealt', 'magicDamageDealtToChampions', 
-                  'magicalDamageTaken', 'neutralMinionsKilled', 'neutralMinionsKilledEnemyJungle', 'neutralMinionsKilledTeamJungle', 'pentaKills', 
-                  'physicalDamageDealt', 'physicalDamageDealtToChampions', 'physicalDamageTaken', 'quadraKills', 'timeCCingOthers', 'totalDamageDealt', 
-                  'totalDamageDealtToChampions', 'totalDamageTaken', 'totalHeal', 'totalMinionsKilled', 'totalTimeCrowdControlDealt', 'tripleKills', 
-                  'trueDamageDealt', 'trueDamageDealtToChampions', 'trueDamageTaken', 'turretKills', 'unrealKills', 'visionScore', 'visionWardsBoughtInGame', 
-                  'wardsPlaced', 'win']
+  # statsDetails = ['assists', 'champLevel', 'damageDealtToObjectives', 'damageDealtToTurrets', 'damageSelfMitigated', 'deaths', 'doubleKills', 'firstBloodAssist', 
+  #                 'firstBloodKill', 'firstInhibitorAssist', 'firstInhibitorKill', 'firstTowerAssist', 'firstTowerKill', 'goldEarned', 'goldSpent', 'inhibitorKills', 
+  #                 'killingSprees', 'kills', 'largestKillingSpree', 'largestMultiKill', 'longestTimeSpentLiving', 'magicDamageDealt', 'magicDamageDealtToChampions', 
+  #                 'magicalDamageTaken', 'neutralMinionsKilled', 'neutralMinionsKilledEnemyJungle', 'neutralMinionsKilledTeamJungle', 'pentaKills', 
+  #                 'physicalDamageDealt', 'physicalDamageDealtToChampions', 'physicalDamageTaken', 'quadraKills', 'timeCCingOthers', 'totalDamageDealt', 
+  #                 'totalDamageDealtToChampions', 'totalDamageTaken', 'totalHeal', 'totalMinionsKilled', 'totalTimeCrowdControlDealt', 'tripleKills', 
+  #                 'trueDamageDealt', 'trueDamageDealtToChampions', 'trueDamageTaken', 'turretKills', 'unrealKills', 'visionScore', 'visionWardsBoughtInGame', 
+  #                 'wardsPlaced', 'win']
+  statsDetails = ['assists', 'damageDealtToObjectives', 'damageDealtToTurrets', 'deaths', 
+                  'firstBloodKill', 'firstTowerKill', 'goldEarned', 
+                  'killingSprees', 'kills', 
+                  'totalDamageDealtToChampions', 'totalMinionsKilled', 'totalTimeCrowdControlDealt',
+                  'turretKills', 'visionScore',
+                  'win']
   lane = {'NONE': None, 'TOP': 1, 'JUNGLE': 2, 'MIDDLE': 3, 'BOTTOM': 4}
   for rankedMatch in rankedMatches:
     for player in rankedMatch['participantIdentities']:
@@ -95,7 +110,10 @@ def organizeMatchData(rankedMatches, encryptedSummonerId):
         matchDetails.append(player['championId'])
         matchDetails.append(lane[player['timeline']['lane']])
         for statsDetail in statsDetails:
-          matchDetails.append(player['stats'].get(statsDetail))
+          if statsDetail in ['firstBloodAssist', 'firstBloodKill', 'firstInhibitorAssist', 'firstInhibitorKill', 'firstTowerAssist', 'firstTowerKill', 'win']:
+            matchDetails.append(1) if player['stats'].get(statsDetail) == True else matchDetails.append(0)
+          else:
+            matchDetails.append(player['stats'].get(statsDetail))
         matchPlayerDetails.append(player)
         break
   return matchDetails
@@ -126,9 +144,12 @@ def getSummonerMatchIds(encryptedAccountId, numOfMatches):
       if len(rankedMatches) == numOfMatches:
         break
     return rankedMatches
-  except:
+  except (KeyboardInterrupt, SystemExit):
+    raise
+  except Exception as e:
     print('Something went wrong in getSummonerMatchIds:')
     print(allMatchesResponse)
+    print(e)
 
 def getPlayersInMatch(matchId, encryptedAccountId):
   getMatchDetails = 'https://na1.api.riotgames.com/lol/match/v4/matches/{0:d}'.format(matchId)
@@ -162,12 +183,14 @@ def getChallengerPlayers():
     for player in challengerPlayersResponse['entries']:
       challengerPlayers.append(player['summonerName'])
     return challengerPlayers
-  except:
+  except (KeyboardInterrupt, SystemExit):
+    raise
+  except Exception as e:
     print('Something went wrong in getChallengerPlayers:')
     print(challengerPlayersResponse)
+    print(e)
 
 def getTrainingData():
-  f= open("lol.txt","w+")
   with open('test-data.csv', mode='w') as testData:
     dataWriter = csv.writer(testData, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     challengerPlayersUsernames = getChallengerPlayers()
@@ -183,19 +206,22 @@ def getTrainingData():
             for teamMemberEncryptedAccountId, teamMemberEncryptedSummonerId in teamEncryptedAccountIds:
               if (teamMemberEncryptedAccountId == None or teamMemberEncryptedSummonerId == None):
                 raise Exception("Team member is None Type")
-                break
               summonerMatchData = getSummonerMatchData(teamMemberEncryptedAccountId, 3, datetime.fromtimestamp(timestamp/1000.0))
               organizedData = organizeMatchData(summonerMatchData, teamMemberEncryptedSummonerId)
               data.append(organizedData)
-            f.write(str(data))
             flatData = list(chain.from_iterable(data))
-            dataWriter.writerow(flatData)
-          except:
+            flatData.append(1) if win else flatData.append(0)
+            print(dataWriter.writerow(flatData))
+          except (KeyboardInterrupt, SystemExit):
+            raise
+          except Exception as e:
             print("Error while going through players")
-      except:
+            print(e)
+      except (KeyboardInterrupt, SystemExit):
+        raise
+      except  Exception as e:
         print("Error with getting challenger summoner.")
-  f.close()
-  
+        print(e)
 
         
 

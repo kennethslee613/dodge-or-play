@@ -5,7 +5,7 @@ import csv
 import pymysql
 import sys
 
-API_KEY = 'RGAPI-8ca6183f-9a94-4bd8-8be5-ce93d361b1dd'
+API_KEY = 'RGAPI-41aad609-de2c-4f2c-abd1-4fd3145eed65'
 PLAYER_USERNAME = 'FredericaxSbK'
 TEAMMATES = []
 API_KEY_PARAM = {'api_key': API_KEY}
@@ -42,14 +42,16 @@ def getAccountId(summonerId):
         print('Something went wrong in getSummonerId():')
         print(summoner)
         print(e)
-        sys.exit(2)
 
 def getMatchIdsOfPlayer(accountId):
     try:
         getAllMatches = 'https://na1.api.riotgames.com/lol/match/v4/matchlists/by-account/{0:s}'.format(accountId)
         allMatchesResponse = requests.get(url = getAllMatches, params=API_KEY_PARAM).json()
         time.sleep(1.3)
-        allMatches = allMatchesResponse['matches']
+        try:
+            allMatches = allMatchesResponse['matches']
+        except:
+            return None
         rankedMatches = []
         for match in allMatches:
             if match['queue'] == RANKED_QUEUE_ID:
@@ -62,7 +64,6 @@ def getMatchIdsOfPlayer(accountId):
         print('Something went wrong in getSummonerId():')
         print(allMatchesResponse)
         print(e)
-        sys.exit(2)
 
 def organizeMatchData(rankedMatches, summonerId):
     try:
@@ -100,7 +101,7 @@ def organizeMatchData(rankedMatches, summonerId):
                             matchDetails.append(player['stats'].get(statsDetail))
                     matchPlayerDetails.append(player)
                     break
-        while len(matchDetails) < 14:
+        while len(matchDetails) < 28:
             matchDetails.append(None)
         return matchDetails
     except (KeyboardInterrupt, SystemExit):
@@ -139,6 +140,7 @@ def getHistoryOfPlayer(accountId, summonerId, datetime):
         print('Something went wrong in getHistoryOfPlayer():')
         print(e)
         print(allMatchesResponse)
+        print(accountId)
 
 def createGamesData(gameId):
     try:
@@ -197,7 +199,6 @@ def storeGamesData(connection, gamesData):
             print('Insert into testData table has failed:')
             print(e)
             print(gamesData)
-            sys.exit(2)
         finally:
             connection.commit()
     except (KeyboardInterrupt, SystemExit):
@@ -205,7 +206,7 @@ def storeGamesData(connection, gamesData):
     except Exception as e:
         print('Something went wrong in storeGamesData():')
         print(e)
-        sys.exit(2)
+        raise
     finally:
         cursor.close()
 
@@ -216,32 +217,33 @@ def goThroughMatchesGivenPlayers(connection, challengerPlayers):
         for summonerId in challengerPlayers:
             accountId = getAccountId(summonerId)
             rankedMatches = getMatchIdsOfPlayer(accountId)
-            for gameId in rankedMatches:
-                query = 'SELECT * FROM matches WHERE gameId = "%s";'
-                cursor.execute(query, (gameId))
-                response = cursor.fetchall()
-                # If this game hasn't been added yet
-                if response == ():
-                    try:
-                        gamesData1, gamesData2 = createGamesData(gameId)
-                        storeGamesData(connection, gamesData1)
-                        storeGamesData(connection, gamesData2)
-                        query = 'INSERT INTO matches (gameId) VALUES ("%s");'
+            if rankedMatches != None:
+                for gameId in rankedMatches:
+                    query = 'SELECT * FROM matches WHERE gameId = "%s";'
+                    cursor.execute(query, (gameId))
+                    response = cursor.fetchall()
+                    # If this game hasn't been added yet
+                    if response == ():
                         try:
-                            cursor.execute(query, (gameId))
-                        except Exception as e:
-                            connection.rollback()
-                            print('Insert into matches table has failed:')
-                            print(e)
+                            gamesData1, gamesData2 = createGamesData(gameId)
+                            storeGamesData(connection, gamesData1)
+                            storeGamesData(connection, gamesData2)
+                            query = 'INSERT INTO matches (gameId) VALUES ("%s");'
+                            try:
+                                cursor.execute(query, (gameId))
+                            except Exception as e:
+                                connection.rollback()
+                                print('Insert into matches table has failed:')
+                                print(e)
+                                sys.exit(2)
+                            finally:
+                                connection.commit()
+                                count += 2
+                                print('Rows added: {0:d}'.format(count), end='\r')
+                        except (KeyboardInterrupt, SystemExit):
                             sys.exit(2)
-                        finally:
-                            connection.commit()
-                            count += 2
-                            print('Rows added: {0:d}'.format(count), end='\r')
-                    except (KeyboardInterrupt, SystemExit):
-                        sys.exit(2)
-                    except:
-                        print('Error with createGamesData')
+                        except:
+                            print('Error with createGamesData')
     except (KeyboardInterrupt, SystemExit):
         sys.exit(2)
     except Exception as e:
