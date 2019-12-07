@@ -1,0 +1,25 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+jupyter = "*"
+numpy = "*"
+matplotlib = "*"
+sklearn = "*"
+pandas = "*"
+xlrd = "*"
+tensorflow = "*"
+pydot = "*"
+graphviz = "*"
+pymysql = "*"
+librosa = "*"
+flickrapi = "*"
+scikit-image = "*"
+pillow = "*"
+
+[requires]
+python_version = "3.7"
