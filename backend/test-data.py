@@ -6,8 +6,6 @@ import pymysql
 import sys
 
 API_KEY = 'RGAPI-41aad609-de2c-4f2c-abd1-4fd3145eed65'
-PLAYER_USERNAME = 'FredericaxSbK'
-TEAMMATES = []
 API_KEY_PARAM = {'api_key': API_KEY}
 RANKED_QUEUE_ID = 420
 RANKED_QUEUE_NAME = 'RANKED_SOLO_5x5'
